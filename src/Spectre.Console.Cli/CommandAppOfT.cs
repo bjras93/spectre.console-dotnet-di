@@ -10,7 +10,8 @@ namespace Spectre.Console.Cli;
 #if !NETSTANDARD2_0
 [RequiresDynamicCode("Spectre.Console.Cli relies on reflection. Use during trimming and AOT compilation is not supported and may result in unexpected behaviors.")]
 #endif
-public sealed class CommandApp<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TDefaultCommand> : ICommandApp
+public sealed class CommandApp<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TDefaultCommand> : ICommandApp
     where TDefaultCommand : class, ICommand
 {
     private readonly CommandApp _app;
@@ -36,39 +37,25 @@ public sealed class CommandApp<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     }
 
     /// <summary>
-    /// Sets up dependencies.
-    /// </summary>
-    /// <param name="args">Arguments from user input.</param>
-    public void Setup(
-        IEnumerable<string> args)
-    {
-        _app.Setup(args);
-    }
-
-    /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
-    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
     public int Run(
-        IServiceProvider provider,
         IEnumerable<string> args)
     {
-        return _app.Run(provider, args);
+        return _app.Run(args);
     }
 
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
-    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
     public Task<int> RunAsync(
-        IServiceProvider provider,
         IEnumerable<string> args)
     {
-        return _app.RunAsync(provider, args);
+        return _app.RunAsync(args);
     }
 
     internal Configurator GetConfigurator()

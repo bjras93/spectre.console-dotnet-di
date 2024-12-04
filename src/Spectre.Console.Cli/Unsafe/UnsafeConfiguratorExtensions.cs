@@ -13,7 +13,7 @@ public static class UnsafeConfiguratorExtensions
     /// <returns>An <see cref="IUnsafeConfigurator"/>.</returns>
     public static IUnsafeConfigurator SafetyOff(this IConfigurator configurator)
     {
-        if (!(configurator is IUnsafeConfigurator @unsafe))
+        if (configurator is not IUnsafeConfigurator @unsafe)
         {
             throw new CommandConfigurationException("Configurator does not support manual configuration");
         }
@@ -29,7 +29,7 @@ public static class UnsafeConfiguratorExtensions
     /// <returns>An <see cref="IConfigurator"/>.</returns>
     public static IConfigurator SafetyOn(this IUnsafeConfigurator configurator)
     {
-        if (!(configurator is IConfigurator safe))
+        if (configurator is not IConfigurator safe)
         {
             throw new CommandConfigurationException("Configurator cannot be converted to a safe configurator.");
         }
@@ -44,10 +44,12 @@ public static class UnsafeConfiguratorExtensions
     /// <typeparam name="TSettings">The command settings.</typeparam>
     /// <param name="configurator">The configurator.</param>
     /// <returns>An <see cref="IUnsafeConfigurator"/>.</returns>
-    public static IUnsafeConfigurator SafetyOff<TSettings>(this IConfigurator<TSettings> configurator)
+    public static IUnsafeConfigurator SafetyOff<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings>(this IConfigurator<TSettings> configurator)
         where TSettings : CommandSettings
     {
-        if (!(configurator is IUnsafeConfigurator @unsafe))
+        if (configurator is not IUnsafeConfigurator @unsafe)
         {
             throw new CommandConfigurationException("Configurator does not support manual configuration");
         }
@@ -62,10 +64,12 @@ public static class UnsafeConfiguratorExtensions
     /// <typeparam name="TSettings">The command settings.</typeparam>
     /// <param name="configurator">The configurator.</param>
     /// <returns>An <see cref="IConfigurator{TSettings}"/>.</returns>
-    public static IConfigurator<TSettings> SafetyOn<TSettings>(this IUnsafeBranchConfigurator configurator)
+    public static IConfigurator<TSettings> SafetyOn<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings>(this IUnsafeBranchConfigurator configurator)
         where TSettings : CommandSettings
     {
-        if (!(configurator is IConfigurator<TSettings> safe))
+        if (configurator is not IConfigurator<TSettings> safe)
         {
             throw new CommandConfigurationException($"Configurator cannot be converted to a safe configurator of type '{typeof(TSettings).Name}'.");
         }

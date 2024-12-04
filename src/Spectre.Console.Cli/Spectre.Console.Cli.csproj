@@ -3,9 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>net9.0</TargetFrameworks>
   </PropertyGroup>
-  <PropertyGroup>
-    <IsTrimmable>true</IsTrimmable>
-  </PropertyGroup>
 
   <ItemGroup Label="Dependencies">
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />

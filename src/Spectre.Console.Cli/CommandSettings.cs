@@ -8,7 +8,8 @@ public abstract class CommandSettings
     /// <summary>
     /// Gets the type of the <see cref="CommandSettings"/> instance.
     /// </summary>
-    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
     public Type Type { get; }
 
     /// <summary>
@@ -16,7 +17,8 @@ public abstract class CommandSettings
     /// </summary>
     /// <param name="type">Type of the <see cref="CommandSettings"/> instance.</param>
     public CommandSettings(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
         Type type)
     {
         Type = type;

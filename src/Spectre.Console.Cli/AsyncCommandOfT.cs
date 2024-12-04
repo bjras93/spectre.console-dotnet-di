@@ -4,7 +4,8 @@ namespace Spectre.Console.Cli;
 /// Base class for an asynchronous command.
 /// </summary>
 /// <typeparam name="TSettings">The settings type.</typeparam>
-public abstract class AsyncCommand<TSettings> : ICommand<TSettings>
+public abstract class AsyncCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings> : ICommand<TSettings>
     where TSettings : CommandSettings
 {
     /// <summary>

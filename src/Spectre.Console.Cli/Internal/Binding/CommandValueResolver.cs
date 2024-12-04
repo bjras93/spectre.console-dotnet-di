@@ -211,14 +211,17 @@ internal static class CommandValueResolver
     /// </summary>
     private readonly ref struct SmartConverter
     {
-        public SmartConverter(TypeConverter typeConverter, Type type)
+        public SmartConverter(
+            TypeConverter typeConverter,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            Type type)
         {
             TypeConverter = typeConverter;
             Type = type;
         }
 
         public TypeConverter TypeConverter { get; }
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private Type Type { get; }
 
         public object? ConvertFrom(object input)

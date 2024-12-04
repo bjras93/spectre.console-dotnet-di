@@ -282,7 +282,8 @@ public static class ConfiguratorExtensions
     /// <param name="name">The name of the command branch.</param>
     /// <param name="action">The command branch configuration.</param>
     /// <returns>A branch configurator that can be used to configure the branch further.</returns>
-    public static IBranchConfigurator AddBranch<TSettings>(
+    public static IBranchConfigurator AddBranch<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings>(
         this IConfigurator<TSettings> configurator,
         string name,
         Action<IConfigurator<TSettings>> action)
@@ -344,7 +345,8 @@ public static class ConfiguratorExtensions
     /// <param name="name">The name of the command.</param>
     /// <param name="func">The delegate to execute as part of command execution.</param>
     /// <returns>A command configurator that can be used to configure the command further.</returns>
-    public static ICommandConfigurator AddDelegate<TSettings>(
+    public static ICommandConfigurator AddDelegate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings>(
         this IConfigurator<TSettings>? configurator,
         string name,
         Func<CommandContext, int> func)
@@ -371,7 +373,8 @@ public static class ConfiguratorExtensions
     /// <param name="name">The name of the command.</param>
     /// <param name="func">The delegate to execute as part of command execution.</param>
     /// <returns>A command configurator that can be used to configure the command further.</returns>
-    public static ICommandConfigurator AddAsyncDelegate<TSettings>(
+    public static ICommandConfigurator AddAsyncDelegate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TSettings>(
         this IConfigurator<TSettings> configurator,
         string name,
         Func<CommandContext, Task<int>> func)

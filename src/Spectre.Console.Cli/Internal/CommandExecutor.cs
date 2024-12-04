@@ -12,17 +12,60 @@ internal sealed class CommandExecutor
         _services.AddSingleton<DefaultPairDeconstructor>();
     }
 
-    public async Task<int> Execute(IConfiguration configuration, IServiceProvider provider, IEnumerable<string> args)
+    public async Task<int> Execute(IConfiguration configuration, IEnumerable<string> args)
     {
-        var parsedResult = provider.GetRequiredService<CommandTreeParserResult>();
+        if (configuration == null)
+        {
+            throw new ArgumentNullException(nameof(configuration));
+        }
+
+        var arguments = args.ToSafeReadOnlyList();
+
+        _services.AddSingleton(configuration);
+
+        // TODO Investigate if this needs to be registered using same logic as old registrar
+        _services.AddSingleton(configuration.Settings.Console.GetConsole());
+
+        // Create the command model.
+        var model = CommandModelBuilder.Build(configuration);
+        _services.AddSingleton(model);
+        _services.AddDependencies(model);
+
+        // No default command?
+        if (model.DefaultCommand == null)
+        {
+            // Got at least one argument?
+            var firstArgument = arguments.FirstOrDefault();
+            if (firstArgument != null)
+            {
+                // Asking for version? Kind of a hack, but it's alright.
+                // We should probably make this a bit better in the future.
+                if (firstArgument.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
+                    firstArgument.Equals("-v", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (configuration.Settings.ApplicationVersion != null)
+                    {
+                        var console = configuration.Settings.Console.GetConsole();
+                        console.MarkupLine(configuration.Settings.ApplicationVersion);
+                        return 0;
+                    }
+                }
+            }
+        }
+
+        // Parse and map the model against the arguments.
+        var parsedResult = ParseCommandLineArguments(model, configuration.Settings, arguments);
+
+        // Register the arguments with the container.
+        _services.AddTransient((_) => parsedResult);
+        _services.AddTransient((_) => parsedResult.Remaining);
+
+        var provider = _services.BuildServiceProvider();
 
         // Get the registered help provider, falling back to the default provider
         // if no custom implementations have been registered.
         var helpProviders = provider.GetServices<IEnumerable<IHelpProvider>>().Select(c => c as HelpProvider);
         var helpProvider = helpProviders?.LastOrDefault() ?? new HelpProvider(configuration.Settings);
-
-        var model = provider.GetRequiredService<CommandModel>();
-        var arguments = args.ToSafeReadOnlyList();
 
         // Currently the root?
         if (parsedResult?.Tree == null)
@@ -58,55 +101,6 @@ internal sealed class CommandExecutor
 
         // Execute the command tree.
         return await Execute(leaf, parsedResult.Tree, context, provider, configuration).ConfigureAwait(false);
-    }
-
-    public void Setup(IConfiguration configuration, IEnumerable<string> args)
-    {
-        if (configuration == null)
-        {
-            throw new ArgumentNullException(nameof(configuration));
-        }
-
-        var arguments = args.ToSafeReadOnlyList();
-
-        _services.AddSingleton(configuration);
-
-        // TODO Investigate if this needs to be registered using same logic as old registrar
-        _services.AddSingleton(configuration.Settings.Console.GetConsole());
-
-        // Create the command model.
-        var model = CommandModelBuilder.Build(configuration);
-        _services.AddSingleton(model);
-        _services.AddDependencies(model);
-
-        // No default command?
-        if (model.DefaultCommand == null)
-        {
-            // Got at least one argument?
-            var firstArgument = arguments.FirstOrDefault();
-            if (firstArgument != null)
-            {
-                // Asking for version? Kind of a hack, but it's alright.
-                // We should probably make this a bit better in the future.
-                if (firstArgument.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
-                    firstArgument.Equals("-v", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (configuration.Settings.ApplicationVersion != null)
-                    {
-                        var console = configuration.Settings.Console.GetConsole();
-                        console.MarkupLine(configuration.Settings.ApplicationVersion);
-                        return;
-                    }
-                }
-            }
-        }
-
-        // Parse and map the model against the arguments.
-        var parsedResult = ParseCommandLineArguments(model, configuration.Settings, arguments);
-
-        // Register the arguments with the container.
-        _services.AddTransient((_) => parsedResult);
-        _services.AddTransient((_) => parsedResult.Remaining);
     }
 
     private CommandTreeParserResult ParseCommandLineArguments(CommandModel model, CommandAppSettings settings, IReadOnlyList<string> args)

@@ -41,7 +41,8 @@ public sealed class CommandApp : ICommandApp
     /// </summary>
     /// <typeparam name="TCommand">The command type.</typeparam>
     /// <returns>A <see cref="DefaultCommandConfigurator"/> that can be used to configure the default command.</returns>
-    public DefaultCommandConfigurator SetDefaultCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TCommand>()
+    public DefaultCommandConfigurator SetDefaultCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+    DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>()
         where TCommand : class, ICommand
     {
         return new DefaultCommandConfigurator(GetConfigurator().SetDefaultCommand<TCommand>());
@@ -50,53 +51,39 @@ public sealed class CommandApp : ICommandApp
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
-    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
     public int Run(
-        IServiceProvider provider,
         IEnumerable<string> args)
     {
-        return RunAsync(provider, args).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// Sets up dependencies.
-    /// </summary>
-    /// <param name="args">Arguments from user input.</param>
-    public void Setup(
-        IEnumerable<string> args)
-    {
-        // Add built-in (hidden) commands.
-        _configurator.AddBranch(CliConstants.Commands.Branch, cli =>
-        {
-            cli.HideBranch();
-            cli.AddCommand<VersionCommand>(CliConstants.Commands.Version);
-            cli.AddCommand<XmlDocCommand>(CliConstants.Commands.XmlDoc);
-            cli.AddCommand<ExplainCommand>(CliConstants.Commands.Explain);
-        });
-        _executor.Setup(_configurator, args);
+        return RunAsync(args).GetAwaiter().GetResult();
     }
 
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
-    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
     public async Task<int> RunAsync(
-        IServiceProvider provider,
         IEnumerable<string> args)
     {
         try
         {
             if (!_executed)
             {
+                // Add built-in (hidden) commands.
+                _configurator.AddBranch(CliConstants.Commands.Branch, cli =>
+                {
+                    cli.HideBranch();
+                    cli.AddCommand<VersionCommand>(CliConstants.Commands.Version);
+                    cli.AddCommand<XmlDocCommand>(CliConstants.Commands.XmlDoc);
+                    cli.AddCommand<ExplainCommand>(CliConstants.Commands.Explain);
+                });
                 _executed = true;
             }
 
             return await _executor
-                .Execute(_configurator, provider, args)
+                .Execute(_configurator, args)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)

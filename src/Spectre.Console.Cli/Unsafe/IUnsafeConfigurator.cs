@@ -13,7 +13,8 @@ public interface IUnsafeConfigurator
     /// <returns>A command configurator that can be used to configure the command further.</returns>
     ICommandConfigurator AddCommand(
         string name,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces |
+        DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
         Type command);
 
     /// <summary>
@@ -23,5 +24,9 @@ public interface IUnsafeConfigurator
     /// <param name="settings">The command setting type.</param>
     /// <param name="action">The command branch configurator.</param>
     /// <returns>A branch configurator that can be used to configure the branch further.</returns>
-    IBranchConfigurator AddBranch(string name, Type settings, Action<IUnsafeBranchConfigurator> action);
+    IBranchConfigurator AddBranch(
+        string name,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicConstructors)]
+        Type settings,
+        Action<IUnsafeBranchConfigurator> action);
 }

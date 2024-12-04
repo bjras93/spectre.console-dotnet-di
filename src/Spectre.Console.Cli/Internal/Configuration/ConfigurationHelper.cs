@@ -2,10 +2,9 @@ namespace Spectre.Console.Cli;
 
 internal static class ConfigurationHelper
 {
-    public static Type? GetSettingsType(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
-        Type commandType)
+    public static Type? GetSettingsType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TCommand>()
     {
+        var commandType = typeof(TCommand);
         if (typeof(ICommand).GetTypeInfo().IsAssignableFrom(commandType) &&
             GetGenericTypeArguments(commandType, typeof(ICommand<>), out var result))
         {

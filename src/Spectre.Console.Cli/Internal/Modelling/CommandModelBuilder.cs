@@ -208,9 +208,17 @@ internal static class CommandModelBuilder
             defaultValue = new DefaultValueAttribute(false);
         }
 
-        return new CommandOption(kind,
-            propertyType, propertyName, description?.Description, converter, deconstructor,
-            attribute, valueProvider, validators, defaultValue,
+        return new CommandOption(
+            kind,
+            propertyType,
+            propertyName,
+            description?.Description,
+            converter,
+            deconstructor,
+            attribute,
+            valueProvider,
+            validators,
+            defaultValue,
             attribute.ValueIsOptional);
     }
 
