@@ -15,6 +15,11 @@ internal sealed class ExplainCommand : Command<ExplainCommand.Settings>
 
     public sealed class Settings : CommandSettings
     {
+        public Settings()
+        : base(typeof(Settings))
+        {
+        }
+
         [CommandArgument(0, "[command]")]
         public string[]? Commands { get; set; }
 
@@ -177,13 +182,13 @@ internal sealed class ExplainCommand : Command<ExplainCommand.Settings>
         if (!detailed)
         {
             parametersNode.AddNode(
-                $"{parameter.PropertyName} [purple]{GetShortOptions(parameter)}[/] [grey]{parameter.Property.PropertyType.ToString().EscapeMarkup()}[/]");
+                $"{parameter.PropertyName} [purple]{GetShortOptions(parameter)}[/] [grey]{parameter.PropertyType.ToString().EscapeMarkup()}[/]");
 
             return;
         }
 
         var parameterNode = parametersNode.AddNode(
-            $"{parameter.PropertyName} [grey]{parameter.Property.PropertyType.ToString().EscapeMarkup()}[/]");
+            $"{parameter.PropertyName} [grey]{parameter.PropertyType.ToString().EscapeMarkup()}[/]");
 
         parameterNode.AddNode(ValueMarkup("Description", parameter.Description, "no description"));
         parameterNode.AddNode(ValueMarkup("Parameter Kind", parameter.ParameterKind.ToString()));

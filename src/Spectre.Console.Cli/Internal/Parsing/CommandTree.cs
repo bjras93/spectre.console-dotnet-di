@@ -17,14 +17,14 @@ internal sealed class CommandTree
         Unmapped = new List<CommandParameter>();
     }
 
-    public ICommand CreateCommand(ITypeResolver resolver)
+    public ICommand CreateCommand(IServiceProvider provider)
     {
         if (Command.Delegate != null)
         {
             return new DelegateCommand(Command.Delegate);
         }
 
-        if (resolver.Resolve(Command.CommandType) is ICommand command)
+        if (Command.CommandType != null && provider.GetService(Command.CommandType) is ICommand command)
         {
             return command;
         }

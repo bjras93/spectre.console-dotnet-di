@@ -1,9 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfiguration
 {
-    private readonly ITypeRegistrar _registrar;
-
+    private readonly IServiceCollection _services;
     public IList<ConfiguredCommand> Commands { get; }
     public CommandAppSettings Settings { get; }
     public ConfiguredCommand? DefaultCommand { get; private set; }
@@ -11,26 +12,26 @@ internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfig
 
     ICommandAppSettings IConfigurator.Settings => Settings;
 
-    public Configurator(ITypeRegistrar registrar)
+    public Configurator(IServiceCollection services)
     {
-        _registrar = registrar;
+        _services = services;
 
         Commands = new List<ConfiguredCommand>();
-        Settings = new CommandAppSettings(registrar);
+        Settings = new CommandAppSettings(services);
         Examples = new List<string[]>();
     }
 
     public void SetHelpProvider(IHelpProvider helpProvider)
     {
         // Register the help provider
-        _registrar.RegisterInstance(typeof(IHelpProvider), helpProvider);
+        _services.AddSingleton(helpProvider);
     }
 
-    public void SetHelpProvider<T>()
+    public void SetHelpProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         where T : IHelpProvider
     {
         // Register the help provider
-        _registrar.Register(typeof(IHelpProvider), typeof(T));
+        _services.AddSingleton(typeof(IHelpProvider), typeof(T));
     }
 
     public void AddExample(params string[] args)
@@ -38,7 +39,7 @@ internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfig
         Examples.Add(args);
     }
 
-    public ConfiguredCommand SetDefaultCommand<TDefaultCommand>()
+    public ConfiguredCommand SetDefaultCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TDefaultCommand>()
         where TDefaultCommand : class, ICommand
     {
         DefaultCommand = ConfiguredCommand.FromType<TDefaultCommand>(
@@ -46,7 +47,7 @@ internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfig
         return DefaultCommand;
     }
 
-    public ICommandConfigurator AddCommand<TCommand>(string name)
+    public ICommandConfigurator AddCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TCommand>(string name)
         where TCommand : class, ICommand
     {
         var command = Commands.AddAndReturn(ConfiguredCommand.FromType<TCommand>(name, isDefaultCommand: false));
@@ -73,12 +74,15 @@ internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfig
         where TSettings : CommandSettings
     {
         var command = ConfiguredCommand.FromBranch<TSettings>(name);
-        action(new Configurator<TSettings>(command, _registrar));
+        action(new Configurator<TSettings>(command, _services));
         var added = Commands.AddAndReturn(command);
         return new BranchConfigurator(added);
     }
 
-    ICommandConfigurator IUnsafeConfigurator.AddCommand(string name, Type command)
+    ICommandConfigurator IUnsafeConfigurator.AddCommand(
+        string name,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        Type command)
     {
         var method = GetType().GetMethod("AddCommand");
         if (method == null)
@@ -102,7 +106,7 @@ internal sealed class Configurator : IUnsafeConfigurator, IConfigurator, IConfig
 
         // Create the configurator.
         var configuratorType = typeof(Configurator<>).MakeGenericType(settings);
-        if (!(Activator.CreateInstance(configuratorType, new object?[] { command, _registrar }) is IUnsafeBranchConfigurator configurator))
+        if (!(Activator.CreateInstance(configuratorType, new object?[] { command, _services }) is IUnsafeBranchConfigurator configurator))
         {
             throw new CommandConfigurationException("Could not create configurator by reflection.");
         }

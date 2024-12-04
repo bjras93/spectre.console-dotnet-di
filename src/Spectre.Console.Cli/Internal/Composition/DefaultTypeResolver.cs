@@ -19,37 +19,34 @@ internal sealed class DefaultTypeResolver : IDisposable, ITypeResolver
         Registry.Dispose();
     }
 
-    public object? Resolve(Type? type)
+    public object? Resolve(
+        Type? type)
     {
         if (type == null)
         {
             return null;
         }
 
+        Type? elementType = null;
         var isEnumerable = false;
-        if (type.IsGenericType)
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
         {
-            if (type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-            {
-                isEnumerable = true;
-                type = type.GenericTypeArguments[0];
-            }
+            isEnumerable = true;
+            elementType = type.GenericTypeArguments[0];
         }
 
-        var registrations = Registry.GetRegistrations(type);
-        if (registrations != null)
+        var registryType = elementType ?? type;
+        var registrations = Registry.GetRegistrations(registryType);
+        if (registrations != null && isEnumerable)
         {
-            if (isEnumerable)
+            var result = Array.CreateInstance(type, registrations.Count);
+            for (var index = 0; index < registrations.Count; index++)
             {
-                var result = Array.CreateInstance(type, registrations.Count);
-                for (var index = 0; index < registrations.Count; index++)
-                {
-                    var registration = registrations.ElementAt(index);
-                    result.SetValue(Resolve(registration), index);
-                }
-
-                return result;
+                var registration = registrations.ElementAt(index);
+                result.SetValue(Resolve(registration), index);
             }
+
+            return result;
         }
 
         return Resolve(registrations?.LastOrDefault());

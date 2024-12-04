@@ -38,7 +38,7 @@ internal static class CommandInfoExtensions
                         if (option.HaveSameBackingPropertyAs(parentOption))
                         {
                             // Is it part of the same settings class.
-                            if (option.Property.DeclaringType == command.SettingsType)
+                            if (option.PropertyType.DeclaringType == command.SettingsType)
                             {
                                 // Allow it.
                                 return true;

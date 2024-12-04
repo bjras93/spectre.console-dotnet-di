@@ -5,8 +5,10 @@ internal sealed class DefaultPairDeconstructor : IPairDeconstructor
 {
     /// <inheritdoc/>
     (object? Key, object? Value) IPairDeconstructor.Deconstruct(
-        ITypeResolver resolver,
+        IServiceProvider provider,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         Type keyType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         Type valueType,
         string? value)
     {
@@ -44,7 +46,10 @@ internal sealed class DefaultPairDeconstructor : IPairDeconstructor
             Parse(stringValue, valueType));
     }
 
-    private static object? Parse(string value, Type targetType)
+    private static object? Parse(
+        string value,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        Type targetType)
     {
         try
         {
@@ -58,7 +63,11 @@ internal sealed class DefaultPairDeconstructor : IPairDeconstructor
         }
     }
 
-    private static TypeConverter GetConverter(Type type)
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
+                  Justification = "The callers of this method ensure getting the converter is trim compatible - i.e. the type is not Nullable<T>.")]
+    private static TypeConverter GetConverter(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        Type type)
     {
         var converter = TypeDescriptor.GetConverter(type);
         if (converter != null)

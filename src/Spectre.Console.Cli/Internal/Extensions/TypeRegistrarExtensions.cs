@@ -1,8 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 internal static class TypeRegistrarExtensions
 {
-    public static void RegisterDependencies(this ITypeRegistrar registrar, CommandModel model)
+    public static void AddDependencies(this IServiceCollection services, CommandModel model)
     {
         var stack = new Stack<CommandInfo>();
         model.Commands.ForEach(c => stack.Push(c));
@@ -20,12 +22,12 @@ internal static class TypeRegistrarExtensions
             if (command.SettingsType is { IsAbstract: false, IsClass: true })
             {
                 // Register the settings type
-                registrar?.Register(command.SettingsType, command.SettingsType);
+                services.AddTransient(command.SettingsType);
             }
 
             if (command.CommandType != null)
             {
-                registrar?.Register(command.CommandType, command.CommandType);
+                services.AddTransient(command.CommandType);
             }
 
             foreach (var parameter in command.Parameters)
@@ -33,7 +35,7 @@ internal static class TypeRegistrarExtensions
                 var pairDeconstructor = parameter?.PairDeconstructor?.Type;
                 if (pairDeconstructor != null)
                 {
-                    registrar?.Register(pairDeconstructor, pairDeconstructor);
+                    services.AddTransient(pairDeconstructor, pairDeconstructor);
                 }
 
                 var typeConverterTypeName = parameter?.Converter?.ConverterTypeName;
@@ -41,7 +43,7 @@ internal static class TypeRegistrarExtensions
                 {
                     var typeConverterType = Type.GetType(typeConverterTypeName);
                     Debug.Assert(typeConverterType != null, "Could not create type");
-                    registrar?.Register(typeConverterType, typeConverterType);
+                    services.AddTransient(typeConverterType, typeConverterType);
                 }
             }
 

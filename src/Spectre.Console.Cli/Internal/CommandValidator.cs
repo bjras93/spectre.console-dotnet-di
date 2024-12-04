@@ -23,12 +23,15 @@ internal static class CommandValidator
         }
     }
 
-    public static void ValidateParameter(CommandParameter parameter, CommandValueLookup settings, ITypeResolver resolver)
+    public static void ValidateParameter(
+        CommandParameter parameter,
+        CommandValueLookup settings,
+        IServiceProvider provider)
     {
         var assignedValue = settings.GetValue(parameter);
         foreach (var validator in parameter.Validators)
         {
-            var context = new CommandParameterContext(parameter, resolver, assignedValue);
+            var context = new CommandParameterContext(parameter, provider, assignedValue);
             var validationResult = validator.Validate(context);
             if (!validationResult.Successful)
             {

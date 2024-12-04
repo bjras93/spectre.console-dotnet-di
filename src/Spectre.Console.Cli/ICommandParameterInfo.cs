@@ -12,9 +12,10 @@ public interface ICommandParameterInfo
     public string PropertyName { get; }
 
     /// <summary>
-    /// Gets the parameter type.
+    /// Gets the property type.
     /// </summary>
-    public Type ParameterType { get; }
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    public Type PropertyType { get; }
 
     /// <summary>
     /// Gets the description.

@@ -1,15 +1,17 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 internal sealed class Configurator<TSettings> : IUnsafeBranchConfigurator, IConfigurator<TSettings>
     where TSettings : CommandSettings
 {
     private readonly ConfiguredCommand _command;
-    private readonly ITypeRegistrar? _registrar;
+    private readonly IServiceCollection _services;
 
-    public Configurator(ConfiguredCommand command, ITypeRegistrar? registrar)
+    public Configurator(ConfiguredCommand command, IServiceCollection services)
     {
         _command = command;
-        _registrar = registrar;
+        _services = services;
     }
 
     public void SetDescription(string description)
@@ -22,7 +24,7 @@ internal sealed class Configurator<TSettings> : IUnsafeBranchConfigurator, IConf
         _command.Examples.Add(args);
     }
 
-    public void SetDefaultCommand<TDefaultCommand>()
+    public void SetDefaultCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TDefaultCommand>()
         where TDefaultCommand : class, ICommandLimiter<TSettings>
     {
         var defaultCommand = ConfiguredCommand.FromType<TDefaultCommand>(
@@ -36,7 +38,7 @@ internal sealed class Configurator<TSettings> : IUnsafeBranchConfigurator, IConf
         _command.IsHidden = true;
     }
 
-    public ICommandConfigurator AddCommand<TCommand>(string name)
+    public ICommandConfigurator AddCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TCommand>(string name)
         where TCommand : class, ICommandLimiter<TSettings>
     {
         var command = ConfiguredCommand.FromType<TCommand>(name, isDefaultCommand: false);
@@ -70,12 +72,15 @@ internal sealed class Configurator<TSettings> : IUnsafeBranchConfigurator, IConf
         where TDerivedSettings : TSettings
     {
         var command = ConfiguredCommand.FromBranch<TDerivedSettings>(name);
-        action(new Configurator<TDerivedSettings>(command, _registrar));
+        action(new Configurator<TDerivedSettings>(command, _services));
         var added = _command.Children.AddAndReturn(command);
         return new BranchConfigurator(added);
     }
 
-    ICommandConfigurator IUnsafeConfigurator.AddCommand(string name, Type command)
+    ICommandConfigurator IUnsafeConfigurator.AddCommand(
+        string name,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        Type command)
     {
         var method = GetType().GetMethod("AddCommand");
         if (method == null)
@@ -99,7 +104,7 @@ internal sealed class Configurator<TSettings> : IUnsafeBranchConfigurator, IConf
 
         // Create the configurator.
         var configuratorType = typeof(Configurator<>).MakeGenericType(settings);
-        if (!(Activator.CreateInstance(configuratorType, new object?[] { command, _registrar }) is IUnsafeBranchConfigurator configurator))
+        if (!(Activator.CreateInstance(configuratorType, new object?[] { command, _services }) is IUnsafeBranchConfigurator configurator))
         {
             throw new CommandConfigurationException("Could not create configurator by reflection.");
         }

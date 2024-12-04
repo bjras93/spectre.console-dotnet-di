@@ -13,6 +13,7 @@ public interface IFlagValue
     /// <summary>
     /// Gets the flag's element type.
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type Type { get; }
 
     /// <summary>

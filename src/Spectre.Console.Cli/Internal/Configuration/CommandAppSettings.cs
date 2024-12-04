@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 internal sealed class CommandAppSettings : ICommandAppSettings
@@ -10,7 +12,7 @@ internal sealed class CommandAppSettings : ICommandAppSettings
     public IAnsiConsole? Console { get; set; }
     [Obsolete("Register the interceptor with the ITypeRegistrar.")]
     public ICommandInterceptor? Interceptor { get; set; }
-    public ITypeRegistrarFrontend Registrar { get; set; }
+    public IServiceCollection Services { get; set; }
     public CaseSensitivity CaseSensitivity { get; set; }
     public bool PropagateExceptions { get; set; }
     public bool ValidateExamples { get; set; }
@@ -22,11 +24,11 @@ internal sealed class CommandAppSettings : ICommandAppSettings
     public ParsingMode ParsingMode =>
         StrictParsing ? ParsingMode.Strict : ParsingMode.Relaxed;
 
-    public Func<Exception, ITypeResolver?, int>? ExceptionHandler { get; set; }
+    public Func<Exception, IServiceProvider?, int>? ExceptionHandler { get; set; }
 
-    public CommandAppSettings(ITypeRegistrar registrar)
+    public CommandAppSettings(IServiceCollection services)
     {
-        Registrar = new TypeRegistrar(registrar);
+        Services = services;
         CaseSensitivity = CaseSensitivity.All;
         ShowOptionDefaultValues = true;
         MaximumIndirectExamples = 5;

@@ -9,11 +9,14 @@ internal sealed class CommandValueBinder
         _lookup = lookup;
     }
 
-    public void Bind(CommandParameter parameter, ITypeResolver resolver, object? value)
+    public void Bind(
+        CommandParameter parameter,
+        IServiceProvider provider,
+        object? value)
     {
         if (parameter.ParameterKind == ParameterKind.Pair)
         {
-            value = GetLookup(parameter, resolver, value);
+            value = GetLookup(parameter, provider, value);
         }
         else if (parameter.ParameterKind == ParameterKind.Vector)
         {
@@ -27,9 +30,12 @@ internal sealed class CommandValueBinder
         _lookup.SetValue(parameter, value);
     }
 
-    private object GetLookup(CommandParameter parameter, ITypeResolver resolver, object? value)
+    private object GetLookup(
+        CommandParameter parameter,
+        IServiceProvider provider,
+        object? value)
     {
-        var genericTypes = parameter.Property.PropertyType.GetGenericArguments();
+        var genericTypes = parameter.PropertyType.GenericTypeArguments;
 
         var multimap = (IMultiMap?)_lookup.GetValue(parameter);
         if (multimap == null)
@@ -43,18 +49,22 @@ internal sealed class CommandValueBinder
 
         // Create deconstructor.
         var deconstructorType = parameter.PairDeconstructor?.Type ?? typeof(DefaultPairDeconstructor);
-        if (!(resolver.Resolve(deconstructorType) is IPairDeconstructor deconstructor))
+        if (provider.GetService(deconstructorType) is not IPairDeconstructor deconstructor)
         {
-            if (!(Activator.CreateInstance(deconstructorType) is IPairDeconstructor activatedDeconstructor))
+            if (Activator.CreateInstance(deconstructorType) is not IPairDeconstructor activatedDeconstructor)
             {
-                throw new InvalidOperationException($"Could not create pair deconstructor.");
+                throw new InvalidOperationException("Could not create pair deconstructor.");
             }
 
             deconstructor = activatedDeconstructor;
         }
 
+        var keyType = genericTypes[0];
+        var valueType = genericTypes[1];
+        var stringValue = value as string;
+
         // Deconstruct and add to multimap.
-        var pair = deconstructor.Deconstruct(resolver, genericTypes[0], genericTypes[1], value as string);
+        var pair = deconstructor.Deconstruct(provider, keyType, valueType, stringValue);
         if (pair.Key != null)
         {
             multimap.Add(pair);
@@ -74,7 +84,7 @@ internal sealed class CommandValueBinder
         var array = (Array?)_lookup.GetValue(parameter);
         Array newArray;
 
-        var elementType = parameter.Property.PropertyType.GetElementType();
+        var elementType = parameter.PropertyType.GetElementType();
         if (elementType == null)
         {
             throw new InvalidOperationException("Could not get property type.");
@@ -99,7 +109,7 @@ internal sealed class CommandValueBinder
         var flagValue = (IFlagValue?)_lookup.GetValue(parameter);
         if (flagValue == null)
         {
-            flagValue = (IFlagValue?)Activator.CreateInstance(parameter.ParameterType);
+            flagValue = (IFlagValue?)Activator.CreateInstance(parameter.PropertyType);
             if (flagValue == null)
             {
                 throw new InvalidOperationException("Could not create flag value.");

@@ -9,12 +9,19 @@ internal sealed class CommandOption : CommandParameter, ICommandOption
     public bool IsShadowed { get; set; }
 
     public CommandOption(
-        Type parameterType, ParameterKind parameterKind, PropertyInfo property, string? description,
-        TypeConverterAttribute? converter, PairDeconstructorAttribute? deconstructor,
-        CommandOptionAttribute optionAttribute, ParameterValueProviderAttribute? valueProvider,
+        ParameterKind parameterKind,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        Type propertyType,
+        string propertyName,
+        string? description,
+        TypeConverterAttribute? converter,
+        PairDeconstructorAttribute? deconstructor,
+        CommandOptionAttribute optionAttribute,
+        ParameterValueProviderAttribute? valueProvider,
         IEnumerable<ParameterValidationAttribute> validators,
-        DefaultValueAttribute? defaultValue, bool valueIsOptional)
-            : base(parameterType, parameterKind, property, description, converter,
+        DefaultValueAttribute? defaultValue,
+        bool valueIsOptional)
+            : base(parameterKind, propertyType, propertyName, description, converter,
                   defaultValue, deconstructor, valueProvider, validators, false, optionAttribute.IsHidden)
     {
         LongNames = optionAttribute.LongNames;

@@ -70,7 +70,7 @@ internal static class CommandModelBuilder
         return info;
     }
 
-    private static IEnumerable<CommandParameter> GetParameters(CommandInfo command)
+    private static List<CommandParameter> GetParameters(CommandInfo command)
     {
         var result = new List<CommandParameter>();
         var argumentPosition = 0;
@@ -120,7 +120,11 @@ internal static class CommandModelBuilder
                     var attribute = property.GetCustomAttribute<CommandOptionAttribute>();
                     if (attribute != null)
                     {
-                        var option = BuildOptionParameter(property, attribute);
+                        var option = BuildOptionParameter(command.SettingsType, property.Name, attribute);
+                        if (option == null)
+                        {
+                            continue;
+                        }
 
                         // Any previous command has this option defined?
                         if (command.HaveParentWithOption(option))
@@ -144,7 +148,11 @@ internal static class CommandModelBuilder
                     var attribute = property.GetCustomAttribute<CommandArgumentAttribute>();
                     if (attribute != null)
                     {
-                        var argument = BuildArgumentParameter(property, attribute);
+                        var argument = BuildArgumentParameter(command.SettingsType, property.Name, attribute);
+                        if (argument == null)
+                        {
+                            continue;
+                        }
 
                         // Any previous command has this argument defined?
                         // In that case, we should not assign the parameter to this command.
@@ -172,8 +180,20 @@ internal static class CommandModelBuilder
         return result;
     }
 
-    private static CommandOption BuildOptionParameter(PropertyInfo property, CommandOptionAttribute attribute)
+    private static CommandOption? BuildOptionParameter(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+        Type settingsType,
+        string propertyName,
+        CommandOptionAttribute attribute)
     {
+        var property = settingsType.GetProperty(propertyName);
+        if (property == null)
+        {
+            return null;
+        }
+
+        var propertyType = property.PropertyType;
+
         var description = property.GetCustomAttribute<DescriptionAttribute>();
         var converter = property.GetCustomAttribute<TypeConverterAttribute>();
         var deconstructor = property.GetCustomAttribute<PairDeconstructorAttribute>();
@@ -181,31 +201,44 @@ internal static class CommandModelBuilder
         var validators = property.GetCustomAttributes<ParameterValidationAttribute>(true);
         var defaultValue = property.GetCustomAttribute<DefaultValueAttribute>();
 
-        var kind = GetOptionKind(property.PropertyType, attribute, deconstructor, converter);
+        var kind = GetOptionKind(propertyType, attribute, deconstructor, converter);
 
-        if (defaultValue == null && property.PropertyType == typeof(bool))
+        if (defaultValue == null && propertyType == typeof(bool))
         {
             defaultValue = new DefaultValueAttribute(false);
         }
 
-        return new CommandOption(property.PropertyType, kind,
-            property, description?.Description, converter, deconstructor,
+        return new CommandOption(kind,
+            propertyType, propertyName, description?.Description, converter, deconstructor,
             attribute, valueProvider, validators, defaultValue,
             attribute.ValueIsOptional);
     }
 
-    private static CommandArgument BuildArgumentParameter(PropertyInfo property, CommandArgumentAttribute attribute)
+    private static CommandArgument? BuildArgumentParameter(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)]
+        Type settingsType,
+        string propertyName,
+        CommandArgumentAttribute attribute)
     {
+        var property = settingsType.GetProperty(propertyName);
+        if (property == null)
+        {
+            return null;
+        }
+
+        var propertyType = property.PropertyType;
+
+        // Ensure type is available
+        _ = propertyType.Name;
         var description = property.GetCustomAttribute<DescriptionAttribute>();
         var converter = property.GetCustomAttribute<TypeConverterAttribute>();
         var defaultValue = property.GetCustomAttribute<DefaultValueAttribute>();
         var valueProvider = property.GetCustomAttribute<ParameterValueProviderAttribute>();
         var validators = property.GetCustomAttributes<ParameterValidationAttribute>(true);
 
-        var kind = GetParameterKind(property.PropertyType);
+        var kind = GetParameterKind(propertyType);
 
-        return new CommandArgument(
-            property.PropertyType, kind, property,
+        return new CommandArgument(kind, propertyType, propertyName,
             description?.Description, converter,
             defaultValue, attribute, valueProvider,
             validators);

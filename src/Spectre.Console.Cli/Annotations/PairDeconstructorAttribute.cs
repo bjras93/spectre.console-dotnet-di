@@ -12,6 +12,7 @@ public sealed class PairDeconstructorAttribute : Attribute
     /// pair deconstructor class to use for data conversion for the
     /// object this attribute is bound to.
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     public Type Type { get; }
 
     /// <summary>

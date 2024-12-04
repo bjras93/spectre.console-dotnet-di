@@ -2,7 +2,7 @@ namespace Spectre.Console.Cli;
 
 internal static class CommandValueResolver
 {
-    public static CommandValueLookup GetParameterValues(CommandTree? tree, ITypeResolver resolver)
+    public static CommandValueLookup GetParameterValues(CommandTree? tree, IServiceProvider provider)
     {
         var lookup = new CommandValueLookup();
         var binder = new CommandValueBinder(lookup);
@@ -17,13 +17,13 @@ internal static class CommandValueResolver
                 // Got a value provider?
                 if (parameter.ValueProvider != null)
                 {
-                    var context = new CommandParameterContext(parameter, resolver, null);
+                    var context = new CommandParameterContext(parameter, provider, null);
                     if (parameter.ValueProvider.TryGetValue(context, out var result))
                     {
-                        result = ConvertValue(resolver, lookup, binder, parameter, result);
+                        result = ConvertValue(provider, lookup, binder, parameter, result);
 
                         lookup.SetValue(parameter, result);
-                        CommandValidator.ValidateParameter(parameter, lookup, resolver);
+                        CommandValidator.ValidateParameter(parameter, lookup, provider);
                         continue;
                     }
                 }
@@ -31,7 +31,7 @@ internal static class CommandValueResolver
                 if (parameter.IsFlagValue())
                 {
                     // Set the flag value to an empty, not set instance.
-                    var instance = Activator.CreateInstance(parameter.ParameterType);
+                    var instance = Activator.CreateInstance(parameter.PropertyType);
                     lookup.SetValue(parameter, instance);
                 }
                 else
@@ -40,13 +40,13 @@ internal static class CommandValueResolver
                     if (parameter.DefaultValue != null)
                     {
                         var value = parameter.DefaultValue?.Value;
-                        value = ConvertValue(resolver, lookup, binder, parameter, value);
+                        value = ConvertValue(provider, lookup, binder, parameter, value);
 
-                        binder.Bind(parameter, resolver, value);
-                        CommandValidator.ValidateParameter(parameter, lookup, resolver);
+                        binder.Bind(parameter, provider, value);
+                        CommandValidator.ValidateParameter(parameter, lookup, provider);
                     }
-                    else if (Nullable.GetUnderlyingType(parameter.ParameterType) != null ||
-                             !parameter.ParameterType.IsValueType)
+                    else if (Nullable.GetUnderlyingType(parameter.PropertyType) != null ||
+                             !parameter.PropertyType.IsValueType)
                     {
                         lookup.SetValue(parameter, null);
                     }
@@ -59,7 +59,7 @@ internal static class CommandValueResolver
                 if (mapped.Parameter.WantRawValue)
                 {
                     // Just try to assign the raw value.
-                    binder.Bind(mapped.Parameter, resolver, mapped.Value);
+                    binder.Bind(mapped.Parameter, provider, mapped.Value);
                 }
                 else
                 {
@@ -68,18 +68,18 @@ internal static class CommandValueResolver
                         if (mapped.Parameter is CommandOption option && option.DefaultValue != null)
                         {
                             // Set the default value.
-                            binder.Bind(mapped.Parameter, resolver, option.DefaultValue?.Value);
+                            binder.Bind(mapped.Parameter, provider, option.DefaultValue?.Value);
                         }
                         else
                         {
                             // Set the flag but not the value.
-                            binder.Bind(mapped.Parameter, resolver, null);
+                            binder.Bind(mapped.Parameter, provider, null);
                         }
                     }
                     else
                     {
                         object? value;
-                        var converter = GetConverter(lookup, binder, resolver, mapped.Parameter);
+                        var converter = GetConverter(lookup, binder, provider, mapped.Parameter);
                         var mappedValue = mapped.Value ?? string.Empty;
                         try
                         {
@@ -91,21 +91,21 @@ internal static class CommandValueResolver
                         }
 
                         // Assign the value to the parameter.
-                        binder.Bind(mapped.Parameter, resolver, value);
+                        binder.Bind(mapped.Parameter, provider, value);
                     }
                 }
 
                 // Got a value provider?
                 if (mapped.Parameter.ValueProvider != null)
                 {
-                    var context = new CommandParameterContext(mapped.Parameter, resolver, mapped.Value);
+                    var context = new CommandParameterContext(mapped.Parameter, provider, mapped.Value);
                     if (mapped.Parameter.ValueProvider.TryGetValue(context, out var result))
                     {
                         lookup.SetValue(mapped.Parameter, result);
                     }
                 }
 
-                CommandValidator.ValidateParameter(mapped.Parameter, lookup, resolver);
+                CommandValidator.ValidateParameter(mapped.Parameter, lookup, provider);
             }
 
             tree = tree.Next;
@@ -114,11 +114,16 @@ internal static class CommandValueResolver
         return lookup;
     }
 
-    private static object? ConvertValue(ITypeResolver resolver, CommandValueLookup lookup, CommandValueBinder binder, CommandParameter parameter, object? result)
+    private static object? ConvertValue(
+        IServiceProvider provider,
+        CommandValueLookup lookup,
+        CommandValueBinder binder,
+        CommandParameter parameter,
+        object? result)
     {
-        if (result != null && result.GetType() != parameter.ParameterType)
+        if (result != null && result.GetType() != parameter.PropertyType)
         {
-            var converter = GetConverter(lookup, binder, resolver, parameter);
+            var converter = GetConverter(lookup, binder, provider, parameter);
             result = result is Array array ? ConvertArray(array, converter) : converter.ConvertFrom(result);
         }
 
@@ -146,14 +151,20 @@ internal static class CommandValueResolver
     }
 
     [SuppressMessage("Style", "IDE0019:Use pattern matching", Justification = "It's OK")]
-    private static SmartConverter GetConverter(CommandValueLookup lookup, CommandValueBinder binder, ITypeResolver resolver, CommandParameter parameter)
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
+                  Justification = "The callers of this method ensure getting the converter is trim compatible - i.e. the type is not Nullable<T>.")]
+    private static SmartConverter GetConverter(
+        CommandValueLookup lookup,
+        CommandValueBinder binder,
+        IServiceProvider provider,
+        CommandParameter parameter)
     {
         if (parameter.Converter == null)
         {
-            if (parameter.ParameterType.IsArray)
+            if (parameter.PropertyType.IsArray)
             {
                 // Return a converter for each array item (not the whole array)
-                var elementType = parameter.ParameterType.GetElementType();
+                var elementType = parameter.PropertyType.GetElementType();
                 if (elementType == null)
                 {
                     throw new InvalidOperationException("Could not get element type");
@@ -170,7 +181,7 @@ internal static class CommandValueResolver
                 {
                     // Try to assign it with a null value.
                     // This will create the optional value instance without a value.
-                    binder.Bind(parameter, resolver, null);
+                    binder.Bind(parameter, provider, null);
                     value = lookup.GetValue(parameter) as IFlagValue;
                     if (value == null)
                     {
@@ -182,11 +193,12 @@ internal static class CommandValueResolver
                 return new SmartConverter(TypeDescriptor.GetConverter(value.Type), value.Type);
             }
 
-            return new SmartConverter(TypeDescriptor.GetConverter(parameter.ParameterType), parameter.ParameterType);
+            // TODO Maybe cache conversions?
+            return new SmartConverter(TypeDescriptor.GetConverter(parameter.PropertyType), parameter.PropertyType);
         }
 
         var type = Type.GetType(parameter.Converter.ConverterTypeName);
-        if (type == null || resolver.Resolve(type) is not TypeConverter typeConverter)
+        if (type == null || provider.GetService(type) is not TypeConverter typeConverter)
         {
             throw CommandRuntimeException.NoConverterFound(parameter);
         }
@@ -206,6 +218,7 @@ internal static class CommandValueResolver
         }
 
         public TypeConverter TypeConverter { get; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         private Type Type { get; }
 
         public object? ConvertFrom(object input)

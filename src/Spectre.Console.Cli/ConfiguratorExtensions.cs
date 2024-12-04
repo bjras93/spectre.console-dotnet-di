@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 /// <summary>
@@ -29,7 +31,7 @@ public static class ConfiguratorExtensions
     /// <param name="configurator">The configurator.</param>
     /// <typeparam name="T">The type of the help provider to instantiate at runtime and use.</typeparam>
     /// <returns>A configurator that can be used to configure the application further.</returns>
-    public static IConfigurator SetHelpProvider<T>(this IConfigurator configurator)
+    public static IConfigurator SetHelpProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IConfigurator configurator)
         where T : IHelpProvider
     {
         if (configurator == null)
@@ -248,7 +250,7 @@ public static class ConfiguratorExtensions
             throw new ArgumentNullException(nameof(configurator));
         }
 
-        configurator.Settings.Registrar.RegisterInstance<ICommandInterceptor>(interceptor);
+        configurator.Settings.Services.AddSingleton(interceptor);
         return configurator;
     }
 
@@ -391,7 +393,7 @@ public static class ConfiguratorExtensions
     /// <param name="configurator">The configurator.</param>
     /// <param name="exceptionHandler">The Action that handles the exception.</param>
     /// <returns>A configurator that can be used to configure the application further.</returns>
-    public static IConfigurator SetExceptionHandler(this IConfigurator configurator, Action<Exception, ITypeResolver?> exceptionHandler)
+    public static IConfigurator SetExceptionHandler(this IConfigurator configurator, Action<Exception, IServiceProvider?> exceptionHandler)
     {
         return configurator.SetExceptionHandler((ex, resolver) =>
         {
@@ -406,7 +408,7 @@ public static class ConfiguratorExtensions
     /// <param name="configurator">The configurator.</param>
     /// <param name="exceptionHandler">The Action that handles the exception.</param>
     /// <returns>A configurator that can be used to configure the application further.</returns>
-    public static IConfigurator SetExceptionHandler(this IConfigurator configurator, Func<Exception, ITypeResolver?, int>? exceptionHandler)
+    public static IConfigurator SetExceptionHandler(this IConfigurator configurator, Func<Exception, IServiceProvider?, int>? exceptionHandler)
     {
         if (configurator == null)
         {

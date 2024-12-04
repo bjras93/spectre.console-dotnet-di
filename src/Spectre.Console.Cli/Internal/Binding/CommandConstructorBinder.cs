@@ -2,7 +2,10 @@ namespace Spectre.Console.Cli;
 
 internal static class CommandConstructorBinder
 {
-    public static CommandSettings CreateSettings(CommandValueLookup lookup, ConstructorInfo constructor, ITypeResolver resolver)
+    public static CommandSettings CreateSettings(
+        CommandValueLookup lookup,
+        ConstructorInfo constructor,
+        IServiceProvider provider)
     {
         if (constructor.DeclaringType == null)
         {
@@ -20,7 +23,7 @@ internal static class CommandConstructorBinder
             }
             else
             {
-                var value = resolver.Resolve(parameter.ParameterType);
+                var value = provider.GetService(parameter.ParameterType);
                 if (value == null)
                 {
                     throw CommandRuntimeException.CouldNotResolveType(parameter.ParameterType);
@@ -30,8 +33,12 @@ internal static class CommandConstructorBinder
             }
         }
 
-        // Create the settings.
-        if (!(Activator.CreateInstance(constructor.DeclaringType, parameters.ToArray()) is CommandSettings settings))
+        // Create the settings. ?? TODO why do we allow parameters on settings ??
+        // if (Activator.CreateInstance(constructor.DeclaringType, parameters.ToArray()) is not CommandSettings settings)
+        // {
+        //     throw new InvalidOperationException("Could not create settings");
+        // }
+        if (provider.GetService(constructor.DeclaringType) is not CommandSettings settings)
         {
             throw new InvalidOperationException("Could not create settings");
         }
@@ -39,9 +46,15 @@ internal static class CommandConstructorBinder
         // Try to do property injection for parameters that wasn't injected.
         foreach (var (parameter, value) in lookup)
         {
-            if (!mapped.Contains(parameter.Id) && parameter.Property.SetMethod != null)
+            var property = settings.Type.GetProperty(parameter.PropertyName);
+            if (property == null)
             {
-                parameter.Property.SetValue(settings, value);
+                continue;
+            }
+
+            if (!mapped.Contains(parameter.Id) && property.SetMethod != null)
+            {
+                property.SetValue(settings, value);
             }
         }
 

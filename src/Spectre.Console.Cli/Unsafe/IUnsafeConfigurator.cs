@@ -11,7 +11,10 @@ public interface IUnsafeConfigurator
     /// <param name="name">The name of the command.</param>
     /// <param name="command">The command type.</param>
     /// <returns>A command configurator that can be used to configure the command further.</returns>
-    ICommandConfigurator AddCommand(string name, Type command);
+    ICommandConfigurator AddCommand(
+        string name,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        Type command);
 
     /// <summary>
     /// Adds a command branch.

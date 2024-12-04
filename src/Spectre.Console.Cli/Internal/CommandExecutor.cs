@@ -1,16 +1,66 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 internal sealed class CommandExecutor
 {
-    private readonly ITypeRegistrar _registrar;
+    private readonly IServiceCollection _services;
 
-    public CommandExecutor(ITypeRegistrar registrar)
+    public CommandExecutor(IServiceCollection services)
     {
-        _registrar = registrar ?? throw new ArgumentNullException(nameof(registrar));
-        _registrar.Register(typeof(DefaultPairDeconstructor), typeof(DefaultPairDeconstructor));
+        _services = services;
+        _services.AddSingleton<DefaultPairDeconstructor>();
     }
 
-    public async Task<int> Execute(IConfiguration configuration, IEnumerable<string> args)
+    public async Task<int> Execute(IConfiguration configuration, IServiceProvider provider, IEnumerable<string> args)
+    {
+        var parsedResult = provider.GetRequiredService<CommandTreeParserResult>();
+
+        // Get the registered help provider, falling back to the default provider
+        // if no custom implementations have been registered.
+        var helpProviders = provider.GetServices<IEnumerable<IHelpProvider>>().Select(c => c as HelpProvider);
+        var helpProvider = helpProviders?.LastOrDefault() ?? new HelpProvider(configuration.Settings);
+
+        var model = provider.GetRequiredService<CommandModel>();
+        var arguments = args.ToSafeReadOnlyList();
+
+        // Currently the root?
+        if (parsedResult?.Tree == null)
+        {
+            // Display help.
+            configuration.Settings.Console.SafeRender(helpProvider.Write(model, null));
+            return 0;
+        }
+
+        // Get the command to execute.
+        var leaf = parsedResult.Tree.GetLeafCommand();
+        if (leaf.Command.IsBranch || leaf.ShowHelp)
+        {
+            // Branches can't be executed. Show help.
+            configuration.Settings.Console.SafeRender(helpProvider.Write(model, leaf.Command));
+            return leaf.ShowHelp ? 0 : 1;
+        }
+
+        // Is this the default and is it called without arguments when there are required arguments?
+        if (leaf.Command.IsDefaultCommand && arguments.Count == 0 && leaf.Command.Parameters.Any(p => p.Required))
+        {
+            // Display help for default command.
+            configuration.Settings.Console.SafeRender(helpProvider.Write(model, leaf.Command));
+            return 1;
+        }
+
+        // Create the content.
+        var context = new CommandContext(
+            arguments,
+            parsedResult.Remaining,
+            leaf.Command.Name,
+            leaf.Command.Data);
+
+        // Execute the command tree.
+        return await Execute(leaf, parsedResult.Tree, context, provider, configuration).ConfigureAwait(false);
+    }
+
+    public void Setup(IConfiguration configuration, IEnumerable<string> args)
     {
         if (configuration == null)
         {
@@ -19,13 +69,15 @@ internal sealed class CommandExecutor
 
         var arguments = args.ToSafeReadOnlyList();
 
-        _registrar.RegisterInstance(typeof(IConfiguration), configuration);
-        _registrar.RegisterLazy(typeof(IAnsiConsole), () => configuration.Settings.Console.GetConsole());
+        _services.AddSingleton(configuration);
+
+        // TODO Investigate if this needs to be registered using same logic as old registrar
+        _services.AddSingleton(configuration.Settings.Console.GetConsole());
 
         // Create the command model.
         var model = CommandModelBuilder.Build(configuration);
-        _registrar.RegisterInstance(typeof(CommandModel), model);
-        _registrar.RegisterDependencies(model);
+        _services.AddSingleton(model);
+        _services.AddDependencies(model);
 
         // No default command?
         if (model.DefaultCommand == null)
@@ -43,7 +95,7 @@ internal sealed class CommandExecutor
                     {
                         var console = configuration.Settings.Console.GetConsole();
                         console.MarkupLine(configuration.Settings.ApplicationVersion);
-                        return 0;
+                        return;
                     }
                 }
             }
@@ -53,52 +105,8 @@ internal sealed class CommandExecutor
         var parsedResult = ParseCommandLineArguments(model, configuration.Settings, arguments);
 
         // Register the arguments with the container.
-        _registrar.RegisterInstance(typeof(CommandTreeParserResult), parsedResult);
-        _registrar.RegisterInstance(typeof(IRemainingArguments), parsedResult.Remaining);
-
-        // Create the resolver.
-        using (var resolver = new TypeResolverAdapter(_registrar.Build()))
-        {
-            // Get the registered help provider, falling back to the default provider
-            // if no custom implementations have been registered.
-            var helpProviders = resolver.Resolve(typeof(IEnumerable<IHelpProvider>)) as IEnumerable<IHelpProvider>;
-            var helpProvider = helpProviders?.LastOrDefault() ?? new HelpProvider(configuration.Settings);
-
-            // Currently the root?
-            if (parsedResult?.Tree == null)
-            {
-                // Display help.
-                configuration.Settings.Console.SafeRender(helpProvider.Write(model, null));
-                return 0;
-            }
-
-            // Get the command to execute.
-            var leaf = parsedResult.Tree.GetLeafCommand();
-            if (leaf.Command.IsBranch || leaf.ShowHelp)
-            {
-                // Branches can't be executed. Show help.
-                configuration.Settings.Console.SafeRender(helpProvider.Write(model, leaf.Command));
-                return leaf.ShowHelp ? 0 : 1;
-            }
-
-            // Is this the default and is it called without arguments when there are required arguments?
-            if (leaf.Command.IsDefaultCommand && arguments.Count == 0 && leaf.Command.Parameters.Any(p => p.Required))
-            {
-                // Display help for default command.
-                configuration.Settings.Console.SafeRender(helpProvider.Write(model, leaf.Command));
-                return 1;
-            }
-
-            // Create the content.
-            var context = new CommandContext(
-                arguments,
-                parsedResult.Remaining,
-                leaf.Command.Name,
-                leaf.Command.Data);
-
-            // Execute the command tree.
-            return await Execute(leaf, parsedResult.Tree, context, resolver, configuration).ConfigureAwait(false);
-        }
+        _services.AddTransient((_) => parsedResult);
+        _services.AddTransient((_) => parsedResult.Remaining);
     }
 
     private CommandTreeParserResult ParseCommandLineArguments(CommandModel model, CommandAppSettings settings, IReadOnlyList<string> args)
@@ -133,16 +141,15 @@ internal sealed class CommandExecutor
         CommandTree leaf,
         CommandTree tree,
         CommandContext context,
-        ITypeResolver resolver,
+        IServiceProvider provider,
         IConfiguration configuration)
     {
         try
         {
             // Bind the command tree against the settings.
-            var settings = CommandBinder.Bind(tree, leaf.Command.SettingsType, resolver);
+            var settings = CommandBinder.Bind(tree, leaf.Command.SettingsType, provider);
             var interceptors =
-                ((IEnumerable<ICommandInterceptor>?)resolver.Resolve(typeof(IEnumerable<ICommandInterceptor>))
-                ?? Array.Empty<ICommandInterceptor>()).ToList();
+                provider.GetServices<ICommandInterceptor>().ToList() ?? [];
 #pragma warning disable CS0618 // Type or member is obsolete
             if (configuration.Settings.Interceptor != null)
             {
@@ -155,7 +162,7 @@ internal sealed class CommandExecutor
             }
 
             // Create and validate the command.
-            var command = leaf.CreateCommand(resolver);
+            var command = leaf.CreateCommand(provider);
             var validationResult = command.Validate(context, settings);
             if (!validationResult.Successful)
             {
@@ -173,7 +180,7 @@ internal sealed class CommandExecutor
         }
         catch (Exception ex) when (configuration.Settings is { ExceptionHandler: not null, PropagateExceptions: false })
         {
-            return configuration.Settings.ExceptionHandler(ex, resolver);
+            return configuration.Settings.ExceptionHandler(ex, provider);
         }
     }
 }

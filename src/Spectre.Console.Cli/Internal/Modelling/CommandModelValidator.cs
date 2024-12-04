@@ -97,7 +97,7 @@ internal static class CommandModelValidator
         foreach (var option in options)
         {
             // Pair deconstructable?
-            if (option.Property.PropertyType.IsPairDeconstructable())
+            if (option.PropertyType.IsPairDeconstructable())
             {
                 if (option.PairDeconstructor != null && option.Converter != null)
                 {

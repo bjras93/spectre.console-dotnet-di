@@ -39,14 +39,14 @@ public class CommandRuntimeException : CommandAppException
 
     internal static CommandRuntimeException NoConverterFound(CommandParameter parameter)
     {
-        return new CommandRuntimeException($"Could not find converter for type '{parameter.ParameterType.FullName}'.");
+        return new CommandRuntimeException($"Could not find converter for type '{parameter.PropertyType.FullName}'.");
     }
 
     internal static CommandRuntimeException ConversionFailed(MappedCommandParameter parameter, TypeConverter typeConverter, Exception exception)
     {
         var standardValues = typeConverter.GetStandardValuesSupported() ? typeConverter.GetStandardValues() : null;
         var validValues = standardValues == null ? string.Empty : $" Valid values are '{string.Join("', '", standardValues.Cast<object>().Select(Convert.ToString))}'";
-        return new CommandRuntimeException($"Failed to convert '{parameter.Value}' to {parameter.Parameter.ParameterType.Name}.{validValues}", exception);
+        return new CommandRuntimeException($"Failed to convert '{parameter.Value}' to {parameter.Parameter.PropertyType.Name}.{validValues}", exception);
     }
 
     internal static CommandRuntimeException ValidationFailed(ValidationResult result)

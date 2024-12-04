@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli.Internal.Configuration;
 
 namespace Spectre.Console.Cli;
@@ -9,7 +10,7 @@ namespace Spectre.Console.Cli;
 #if !NETSTANDARD2_0
 [RequiresDynamicCode("Spectre.Console.Cli relies on reflection. Use during trimming and AOT compilation is not supported and may result in unexpected behaviors.")]
 #endif
-public sealed class CommandApp<TDefaultCommand> : ICommandApp
+public sealed class CommandApp<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TDefaultCommand> : ICommandApp
     where TDefaultCommand : class, ICommand
 {
     private readonly CommandApp _app;
@@ -18,10 +19,10 @@ public sealed class CommandApp<TDefaultCommand> : ICommandApp
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandApp{TDefaultCommand}"/> class.
     /// </summary>
-    /// <param name="registrar">The registrar.</param>
-    public CommandApp(ITypeRegistrar? registrar = null)
+    /// <param name="services">The service collection.</param>
+    public CommandApp(IServiceCollection services)
     {
-        _app = new CommandApp(registrar);
+        _app = new CommandApp(services);
         _defaultCommandConfigurator = _app.SetDefaultCommand<TDefaultCommand>();
     }
 
@@ -35,23 +36,39 @@ public sealed class CommandApp<TDefaultCommand> : ICommandApp
     }
 
     /// <summary>
-    /// Runs the command line application with specified arguments.
+    /// Sets up dependencies.
     /// </summary>
-    /// <param name="args">The arguments.</param>
-    /// <returns>The exit code from the executed command.</returns>
-    public int Run(IEnumerable<string> args)
+    /// <param name="args">Arguments from user input.</param>
+    public void Setup(
+        IEnumerable<string> args)
     {
-        return _app.Run(args);
+        _app.Setup(args);
     }
 
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
+    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
-    public Task<int> RunAsync(IEnumerable<string> args)
+    public int Run(
+        IServiceProvider provider,
+        IEnumerable<string> args)
     {
-        return _app.RunAsync(args);
+        return _app.Run(provider, args);
+    }
+
+    /// <summary>
+    /// Runs the command line application with specified arguments.
+    /// </summary>
+    /// <param name="provider">The service provider.</param>
+    /// <param name="args">The arguments.</param>
+    /// <returns>The exit code from the executed command.</returns>
+    public Task<int> RunAsync(
+        IServiceProvider provider,
+        IEnumerable<string> args)
+    {
+        return _app.RunAsync(provider, args);
     }
 
     internal Configurator GetConfigurator()

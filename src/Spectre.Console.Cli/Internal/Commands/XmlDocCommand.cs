@@ -15,6 +15,10 @@ internal sealed class XmlDocCommand : Command<XmlDocCommand.Settings>
 
     public sealed class Settings : CommandSettings
     {
+        public Settings()
+        : base(typeof(Settings))
+        {
+        }
     }
 
     public override int Execute(CommandContext context, Settings settings)
@@ -144,7 +148,7 @@ internal sealed class XmlDocCommand : Command<XmlDocCommand.Settings>
             node.SetAttribute("Position", argument.Position.ToString(CultureInfo.InvariantCulture));
             node.SetBooleanAttribute("Required", argument.Required);
             node.SetEnumAttribute("Kind", argument.ParameterKind);
-            node.SetNullableAttribute("ClrType", argument.ParameterType?.FullName);
+            node.SetNullableAttribute("ClrType", argument.PropertyType?.FullName);
 
             if (!string.IsNullOrWhiteSpace(argument.Description))
             {
@@ -188,7 +192,7 @@ internal sealed class XmlDocCommand : Command<XmlDocCommand.Settings>
             node.SetNullableAttribute("Value", option.ValueName);
             node.SetBooleanAttribute("Required", option.Required);
             node.SetEnumAttribute("Kind", option.ParameterKind);
-            node.SetNullableAttribute("ClrType", option.ParameterType?.FullName);
+            node.SetNullableAttribute("ClrType", option.PropertyType?.FullName);
 
             if (!string.IsNullOrWhiteSpace(option.Description))
             {

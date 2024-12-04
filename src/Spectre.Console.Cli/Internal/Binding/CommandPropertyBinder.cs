@@ -2,15 +2,24 @@ namespace Spectre.Console.Cli;
 
 internal static class CommandPropertyBinder
 {
-    public static CommandSettings CreateSettings(CommandValueLookup lookup, Type settingsType, ITypeResolver resolver)
+    public static CommandSettings CreateSettings(
+        CommandValueLookup lookup,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        Type settingsType,
+        IServiceProvider provider)
     {
-        var settings = CreateSettings(resolver, settingsType);
-
+        var settings = CreateSettings(provider, settingsType);
         foreach (var (parameter, value) in lookup)
         {
+            var property = settings.Type.GetProperty(parameter.PropertyName);
+            if (property == null)
+            {
+                continue;
+            }
+
             if (value != default)
             {
-                parameter.Property.SetValue(settings, value);
+                property.SetValue(settings, value);
             }
         }
 
@@ -24,9 +33,12 @@ internal static class CommandPropertyBinder
         return settings;
     }
 
-    private static CommandSettings CreateSettings(ITypeResolver resolver, Type settingsType)
+    private static CommandSettings CreateSettings(
+        IServiceProvider provider,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        Type settingsType)
     {
-        if (resolver.Resolve(settingsType) is CommandSettings settings)
+        if (provider.GetService(settingsType) is CommandSettings settings)
         {
             return settings;
         }

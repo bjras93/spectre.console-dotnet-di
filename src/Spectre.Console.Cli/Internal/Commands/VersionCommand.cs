@@ -13,6 +13,10 @@ internal sealed class VersionCommand : Command<VersionCommand.Settings>
 
     public sealed class Settings : CommandSettings
     {
+        public Settings()
+        : base(typeof(Settings))
+        {
+        }
     }
 
     public override int Execute(CommandContext context, Settings settings)

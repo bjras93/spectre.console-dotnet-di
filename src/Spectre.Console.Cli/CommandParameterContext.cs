@@ -11,9 +11,9 @@ public sealed class CommandParameterContext
     public ICommandParameterInfo Parameter { get; }
 
     /// <summary>
-    /// Gets the type resolver.
+    /// Gets the service provider.
     /// </summary>
-    public ITypeResolver Resolver { get; }
+    public IServiceProvider Provider { get; }
 
     /// <summary>
     /// Gets tje parameter value.
@@ -24,12 +24,12 @@ public sealed class CommandParameterContext
     /// Initializes a new instance of the <see cref="CommandParameterContext"/> class.
     /// </summary>
     /// <param name="parameter">The parameter.</param>
-    /// <param name="resolver">The type resolver.</param>
+    /// <param name="provider">The service provider.</param>
     /// <param name="value">The parameter value.</param>
-    public CommandParameterContext(ICommandParameterInfo parameter, ITypeResolver resolver, object? value)
+    public CommandParameterContext(ICommandParameterInfo parameter, IServiceProvider provider, object? value)
     {
         Parameter = parameter ?? throw new ArgumentNullException(nameof(parameter));
-        Resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        Provider = provider;
         Value = value;
     }
 }

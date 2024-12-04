@@ -5,6 +5,7 @@ namespace Spectre.Console.Cli;
 /// </summary>
 /// <seealso cref="Attribute" />
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class CommandOptionAttribute : Attribute
 {
     /// <summary>

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Spectre.Console.Cli;
 
 /// <summary>
@@ -59,9 +61,9 @@ public interface ICommandAppSettings
     ICommandInterceptor? Interceptor { get; set; }
 
     /// <summary>
-    /// Gets the type registrar.
+    /// Gets the type service collection.
     /// </summary>
-    ITypeRegistrarFrontend Registrar { get; }
+    IServiceCollection Services { get; }
 
     /// <summary>
     /// Gets or sets case sensitivity.
@@ -96,8 +98,8 @@ public interface ICommandAppSettings
     /// <summary>
     /// Gets or sets a handler for Exceptions.
     /// <para>This handler will not be called, if <see cref="PropagateExceptions"/> is set to <c>true</c>.</para>
-    /// The <see cref="ITypeResolver"/> argument will only be not-null, when the exception occurs during execution of
+    /// The <see cref="IServiceProvider"/> argument will only be not-null, when the exception occurs during execution of
     /// a command. I.e. only when the resolver is available.
     /// </summary>
-    public Func<Exception, ITypeResolver?, int>? ExceptionHandler { get; set; }
+    public Func<Exception, IServiceProvider?, int>? ExceptionHandler { get; set; }
 }

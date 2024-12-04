@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli.Internal.Configuration;
 
 namespace Spectre.Console.Cli;
@@ -5,9 +6,6 @@ namespace Spectre.Console.Cli;
 /// <summary>
 /// The entry point for a command line application.
 /// </summary>
-#if !NETSTANDARD2_0
-[RequiresDynamicCode("Spectre.Console.Cli relies on reflection. Use during trimming and AOT compilation is not supported and may result in unexpected behaviors.")]
-#endif
 public sealed class CommandApp : ICommandApp
 {
     private readonly Configurator _configurator;
@@ -17,13 +15,11 @@ public sealed class CommandApp : ICommandApp
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandApp"/> class.
     /// </summary>
-    /// <param name="registrar">The registrar.</param>
-    public CommandApp(ITypeRegistrar? registrar = null)
+    /// <param name="services">The registrar.</param>
+    public CommandApp(IServiceCollection services)
     {
-        registrar ??= new DefaultTypeRegistrar();
-
-        _configurator = new Configurator(registrar);
-        _executor = new CommandExecutor(registrar);
+        _configurator = new Configurator(services);
+        _executor = new CommandExecutor(services);
     }
 
     /// <summary>
@@ -45,7 +41,7 @@ public sealed class CommandApp : ICommandApp
     /// </summary>
     /// <typeparam name="TCommand">The command type.</typeparam>
     /// <returns>A <see cref="DefaultCommandConfigurator"/> that can be used to configure the default command.</returns>
-    public DefaultCommandConfigurator SetDefaultCommand<TCommand>()
+    public DefaultCommandConfigurator SetDefaultCommand<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TCommand>()
         where TCommand : class, ICommand
     {
         return new DefaultCommandConfigurator(GetConfigurator().SetDefaultCommand<TCommand>());
@@ -54,38 +50,53 @@ public sealed class CommandApp : ICommandApp
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
+    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
-    public int Run(IEnumerable<string> args)
+    public int Run(
+        IServiceProvider provider,
+        IEnumerable<string> args)
     {
-        return RunAsync(args).GetAwaiter().GetResult();
+        return RunAsync(provider, args).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Sets up dependencies.
+    /// </summary>
+    /// <param name="args">Arguments from user input.</param>
+    public void Setup(
+        IEnumerable<string> args)
+    {
+        // Add built-in (hidden) commands.
+        _configurator.AddBranch(CliConstants.Commands.Branch, cli =>
+        {
+            cli.HideBranch();
+            cli.AddCommand<VersionCommand>(CliConstants.Commands.Version);
+            cli.AddCommand<XmlDocCommand>(CliConstants.Commands.XmlDoc);
+            cli.AddCommand<ExplainCommand>(CliConstants.Commands.Explain);
+        });
+        _executor.Setup(_configurator, args);
     }
 
     /// <summary>
     /// Runs the command line application with specified arguments.
     /// </summary>
+    /// <param name="provider">The service provider.</param>
     /// <param name="args">The arguments.</param>
     /// <returns>The exit code from the executed command.</returns>
-    public async Task<int> RunAsync(IEnumerable<string> args)
+    public async Task<int> RunAsync(
+        IServiceProvider provider,
+        IEnumerable<string> args)
     {
         try
         {
             if (!_executed)
             {
-                // Add built-in (hidden) commands.
-                _configurator.AddBranch(CliConstants.Commands.Branch, cli =>
-                {
-                    cli.HideBranch();
-                    cli.AddCommand<VersionCommand>(CliConstants.Commands.Version);
-                    cli.AddCommand<XmlDocCommand>(CliConstants.Commands.XmlDoc);
-                    cli.AddCommand<ExplainCommand>(CliConstants.Commands.Explain);
-                });
-
                 _executed = true;
             }
 
             return await _executor
-                .Execute(_configurator, args)
+                .Execute(_configurator, provider, args)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)

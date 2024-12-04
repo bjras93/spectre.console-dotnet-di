@@ -51,20 +51,18 @@ internal sealed class InstanceActivator : ComponentActivator
 
 internal sealed class ReflectionActivator : ComponentActivator
 {
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     private readonly Type _type;
     private readonly ConstructorInfo _constructor;
     private readonly List<ParameterInfo> _parameters;
 
-    public ReflectionActivator(Type type)
+    public ReflectionActivator(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        Type type)
     {
         _type = type;
         _constructor = GetGreediestConstructor(type);
-        _parameters = new List<ParameterInfo>();
-
-        foreach (var parameter in _constructor.GetParameters())
-        {
-            _parameters.Add(parameter);
-        }
+        _parameters = [.. _constructor.GetParameters()];
     }
 
     public override object Activate(DefaultTypeResolver container)
@@ -104,7 +102,9 @@ internal sealed class ReflectionActivator : ComponentActivator
         return new ReflectionActivator(_type);
     }
 
-    private static ConstructorInfo GetGreediestConstructor(Type type)
+    private static ConstructorInfo GetGreediestConstructor(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        Type type)
     {
         ConstructorInfo? current = null;
         var count = -1;
